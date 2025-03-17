@@ -1,4 +1,4 @@
-name: cicd-workflow to create docker image and upload into Azure ACR
+name: cicd-workflow to create docker image and deploy to Azure App Service
 
 on:
   push:
@@ -23,8 +23,6 @@ jobs:
     - name: Build with Maven
       run: mvn clean install
 
-    
-
     - name: Login to Azure Container Registry using username & password
       run: |
         docker login ${{ secrets.ACR_NAME }}.azurecr.io \
@@ -38,3 +36,11 @@ jobs:
         ACR_REPO=${{ secrets.ACR_NAME }}.azurecr.io/myspringbootapp
         docker build -t $ACR_REPO:${IMAGE_TAG} .
         docker push $ACR_REPO:${IMAGE_TAG}
+
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ secrets.AZURE_WEBAPP_NAME }}  # Azure App Service name
+        slot-name: "production"  # Use "staging" if deploying to a slot
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        images: ${{ secrets.ACR_NAME }}.azurecr.io/myspringbootapp:${{ github.sha }}
