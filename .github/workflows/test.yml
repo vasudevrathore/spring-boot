@@ -1,0 +1,39 @@
+name: cicd-workflow to create docker image and upload into Azure ACR1
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'adopt'
+        java-version: '17'
+
+    - name: Build with Maven
+      run: mvn clean install
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Login to Azure Container Registry
+      run: |
+        az acr login --name ${{ secrets.ACR_NAME }}
+
+    - name: Build and push Docker image to ACR
+      env:
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        ACR_REPO=${{ secrets.ACR_NAME }}.azurecr.io/myspringbootapp
+        docker build -t $ACR_REPO:${IMAGE_TAG} .
+        docker push $ACR_REPO:${IMAGE_TAG}
